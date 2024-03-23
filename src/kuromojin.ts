@@ -70,6 +70,12 @@ let isLoading = false;
 // cache for tokenize
 const tokenizeCacheMap = new LRUMap<string, KuromojiToken[]>(10000);
 
+let _options: null | getTokenizerOption = null;
+
+const isCachedOptions = (options: getTokenizerOption) => {
+    return _options?.dicPath === options.dicPath && _options?.noCacheTokenize === options.noCacheTokenize;
+};
+
 export type getTokenizerOption = {
     dicPath: string;
     // Cache by default
@@ -78,7 +84,7 @@ export type getTokenizerOption = {
 };
 
 export function getTokenizer(options: getTokenizerOption = { dicPath: getNodeModuleDirPath() }): Promise<Tokenizer> {
-    if (_tokenizer) {
+    if (_tokenizer && isCachedOptions(options)) {
         return Promise.resolve(_tokenizer);
     }
     if (isLoading) {
@@ -91,6 +97,8 @@ export function getTokenizer(options: getTokenizerOption = { dicPath: getNodeMod
             return deferred.reject(err);
         }
         _tokenizer = tokenizer;
+        _options = options;
+        tokenizeCacheMap.clear();
         deferred.resolve(tokenizer);
     });
     return deferred.promise;
